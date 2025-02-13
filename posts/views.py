@@ -27,10 +27,10 @@ if user is not None:
 else:
     print("Invalid credentials.")
 
-admin_group, created = Group.objects.get_or_create(name="Admin")  # ✅ Ensures the group exists
+admin_group, created = Group.objects.get_or_create(name="Admin") 
 
 try:
-    user = User.objects.get(username="admin_user")  # ✅ Only fetch if user exists
+    user = User.objects.get(username="admin_user") 
     user.groups.add(admin_group)
 except User.DoesNotExist:
     print("Error: User 'admin_user' does not exist. Please create this user first.")
