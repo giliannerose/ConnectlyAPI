@@ -6,7 +6,64 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import User, Post, Comment
+from django.contrib.auth.models import User
 from .serializers import UserSerializer, PostSerializer, CommentSerializer
+from django.contrib.auth import authenticate
+from django.contrib.auth.models import Group, User
+from rest_framework.permissions import IsAuthenticated
+from .permissions import IsPostAuthor
+from rest_framework.authentication import TokenAuthentication
+from django.http import Http404
+
+if not User.objects.filter(username="new_user").exists():
+    user = User.objects.create_user(username="new_user", password="secure_pass123")
+    print(f"User '{user.username}' created successfully.")
+else:
+    print("User already exists.")
+
+user = authenticate(username="new_user", password="secure_pass123")
+if user is not None:
+    print("Authentication successful!")
+else:
+    print("Invalid credentials.")
+
+admin_group, created = Group.objects.get_or_create(name="Admin")  # ✅ Ensures the group exists
+
+try:
+    user = User.objects.get(username="admin_user")  # ✅ Only fetch if user exists
+    user.groups.add(admin_group)
+except User.DoesNotExist:
+    print("Error: User 'admin_user' does not exist. Please create this user first.")
+
+class PostDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsPostAuthor]  
+
+    def get_object(self, pk):
+        try:
+            return Post.objects.get(pk=pk)
+        except Post.DoesNotExist:
+            raise Http404  
+
+    def get(self, request, pk):
+        post = self.get_object(pk)
+        self.check_object_permissions(request, post)
+        return Response({"content": post.content})
+
+    def delete(self, request, pk):
+        post = self.get_object(pk)
+        self.check_object_permissions(request, post)
+        post.delete()
+        return Response({"message": "Post deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+class ProtectedView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+
+    def get(self, request):
+        print("Headers Received:", request.headers)  
+        return Response({"message": "Authenticated!"})
+
 
 class UserListCreate(APIView):
     def get(self, request):
